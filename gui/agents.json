@@ -1,0 +1,32 @@
+{
+  "agents": [
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "command": "opencode [--model {model}] --prompt {message}",
+      "model_prefix": "ollama/",
+      "note": "Free and open source. For local models it needs an opencode.json that lists them (the button below writes one for Ollama). Models are written provider/model, for example ollama/gemma4:26b."
+    },
+    {
+      "id": "qwen",
+      "name": "Qwen Code",
+      "command": "qwen [--model {model}] -i {message}",
+      "model_prefix": "",
+      "note": "Free and open source. Point it at a local model through its own settings, for example an OpenAI-compatible Ollama endpoint."
+    },
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "command": "claude [--model {model}] {message}",
+      "model_prefix": "",
+      "note": "Built for Anthropic's cloud models, so it needs internet and an account. Models are names such as sonnet or opus."
+    },
+    {
+      "id": "custom",
+      "name": "Other agent (type the command)",
+      "command": "",
+      "model_prefix": "",
+      "note": "Write the command that starts your agent with a first message. {message} is that message, {prompt_file} is the path of the brief, and [--model {model}] is a model option that is left out when no model is chosen."
+    }
+  ]
+}

@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:,">
+<title>Papermorph: start a book</title>
+<style>
+:root {
+  --ink: #14202e; --ink-soft: #46586b; --desk: #e3eaf1; --field: #ffffff; --line: #b3c2d1;
+  --morph: #0aa5ec; --morph-ink: #0a6aa8; --on-morph: #0d1b2a; --danger: #b3261e; --ok: #16744a;
+  --paper: #fdfdfc; --paper-ink: #14202e; --paper-soft: #556577; --fold: #c5d3e1;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e7eef6; --ink-soft: #a3b4c6; --desk: #0e1824; --field: #152233; --line: #364b60;
+    --morph-ink: #54c3f7; --danger: #ff8f86; --ok: #62d49c; --fold: #a9bbcd;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--desk); color: var(--ink); font: 16px/1.5 var(--sans); }
+:focus-visible { outline: 3px solid var(--morph); outline-offset: 2px; }
+
+.masthead { max-width: 78rem; margin: 0 auto; padding: 2.5rem 1.5rem 1.75rem; }
+.wordmark { margin: 0; font-size: 2rem; line-height: 1.1; letter-spacing: -0.02em; font-weight: 800; }
+.wordmark span { color: var(--morph-ink); }
+.masthead p { margin: 0.4rem 0 0; max-width: 44rem; color: var(--ink-soft); }
+.banner { max-width: 78rem; margin: 0 auto 1.25rem; padding: 0.75rem 1rem; border-left: 4px solid var(--danger); background: var(--field); }
+.banner-wrap { padding: 0 1.5rem; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 35rem) minmax(0, 1fr); gap: 3.5rem; max-width: 78rem; margin: 0 auto; padding: 0 1.5rem 4rem; align-items: start; }
+
+.controls section { margin-bottom: 2.25rem; }
+.controls h2 { margin: 0 0 1.1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
+.field { margin: 0 0 1.25rem; }
+.label { display: block; margin-bottom: 0.35rem; font-weight: 600; }
+.req { margin-left: 0.4rem; font-weight: 400; font-size: 0.85rem; color: var(--ink-soft); }
+.hint { margin: 0.4rem 0 0; font-size: 0.875rem; color: var(--ink-soft); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+input[type=text], input[type=number], select, textarea {
+  width: 100%; padding: 0.6rem 0.75rem; font: inherit; color: var(--ink); background: var(--field);
+  border: 1px solid var(--line); border-radius: 6px;
+}
+textarea { font-family: var(--mono); font-size: 0.9rem; resize: vertical; }
+[aria-invalid=true] { border-color: var(--danger); }
+
+.seg { position: relative; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { padding: 0.5rem 0.95rem; border: 1px solid var(--line); border-radius: 999px; background: var(--field); cursor: pointer; }
+.seg input:checked + label { background: var(--ink); border-color: var(--ink); color: var(--desk); }
+.seg input:focus-visible + label { outline: 3px solid var(--morph); outline-offset: 2px; }
+
+.drop { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 4.5rem; padding: 1rem; border: 1.5px dashed var(--line); border-radius: 8px; background: var(--field); }
+.drop:hover, .drop.over, .drop.has { border-color: var(--morph-ink); }
+.drop.over { background: color-mix(in srgb, var(--morph) 12%, var(--field)); }
+.drop:focus-within { outline: 3px solid var(--morph); outline-offset: 2px; }
+.drop input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.drop-text { min-width: 0; overflow-wrap: anywhere; }
+.drop-text small { display: block; color: var(--ink-soft); }
+.drop .link { position: relative; z-index: 1; flex: none; }
+
+.pics { list-style: none; margin: 0.9rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.75rem; }
+.pics li { position: relative; font-size: 0.8rem; min-width: 0; }
+.pics img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); background: var(--field); }
+.pics .cap { display: block; margin-top: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pics .rm { position: absolute; top: 0.3rem; right: 0.3rem; width: 1.7rem; height: 1.7rem; border: 0; border-radius: 50%; background: rgba(10, 20, 32, 0.8); color: #fff; font: 1.1rem/1 var(--sans); cursor: pointer; }
+
+.check { display: flex; gap: 0.7rem; align-items: flex-start; cursor: pointer; }
+.check input { margin-top: 0.3rem; width: 1.1rem; height: 1.1rem; accent-color: var(--morph-ink); }
+.check small { display: block; font-size: 0.875rem; color: var(--ink-soft); }
+
+.btn { font: inherit; font-weight: 700; padding: 0.8rem 1.5rem; border: 0; border-radius: 8px; background: var(--morph); color: var(--on-morph); cursor: pointer; }
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: 0.6; cursor: progress; }
+.btn.small { padding: 0.4rem 0.8rem; font-weight: 600; background: transparent; color: var(--morph-ink); border: 1px solid var(--line); }
+.link { padding: 0; border: 0; background: none; font: inherit; color: var(--morph-ink); text-decoration: underline; cursor: pointer; }
+
+.start { margin-top: 2rem; padding: 1.5rem 0 0.5rem; border-top: 1px solid var(--line); }
+.start .hint { margin-top: 0.6rem; }
+.status { margin: 0.75rem 0 0; }
+.status.error, .problems { color: var(--danger); }
+.problems { margin: 0.75rem 0 0; padding-left: 1.1rem; }
+.result { margin-top: 0.9rem; padding: 0.9rem 1rem; border-left: 4px solid var(--ok); background: var(--field); }
+.result.warn { border-left-color: var(--danger); }
+.result p { margin: 0 0 0.5rem; }
+.result pre { margin: 0.5rem 0; }
+
+.sheet-col { position: sticky; top: 1.5rem; align-self: start; }
+.sheet-shadow { filter: drop-shadow(0 1px 1px rgba(8, 24, 44, 0.25)) drop-shadow(0 14px 22px rgba(8, 24, 44, 0.22)); }
+.sheet { position: relative; padding: 2rem 2.25rem 2.25rem; background: var(--paper); color: var(--paper-ink); clip-path: polygon(0 0, calc(100% - 34px) 0, 100% 34px, 100% 100%, 0 100%); }
+.sheet::after { content: ""; position: absolute; top: 0; right: 0; width: 34px; height: 34px; background: linear-gradient(to bottom left, transparent 50%, var(--fold) 50%); }
+.sheet h2 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+.sheet .sub { margin: 0 0 1.25rem; font-size: 0.85rem; color: var(--paper-soft); }
+.brief { margin: 0; padding-right: 0.5rem; max-height: max(14rem, calc(100vh - 19rem)); overflow: auto; font: 1rem/1.65 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmdbox { margin-top: 1.5rem; }
+.cmd { margin: 0.35rem 0 0.6rem; padding: 0.75rem 0.9rem; background: var(--field); border: 1px solid var(--line); border-radius: 6px; font: 0.85rem/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media (max-width: 62rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+  .sheet-col { position: static; }
+  .brief { max-height: none; }
+}
+@media (max-width: 32rem) {
+  .masthead, .layout, .banner-wrap { padding-left: 1rem; padding-right: 1rem; }
+  .row2 { grid-template-columns: 1fr; }
+  .sheet { padding: 1.5rem 1.25rem 1.75rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1 class="wordmark">Paper<span>morph</span></h1>
+  <p>Choose what to make, with which model and agent. The agent opens in a terminal window and asks you the rest.</p>
+</header>
+<div class="banner-wrap"><div id="banner" class="banner" role="alert" hidden></div></div>
+
+<main class="layout">
+<form id="form" class="controls" autocomplete="off" novalidate>
+
+  <section aria-labelledby="h-book">
+    <h2 id="h-book">Book</h2>
+
+    <div class="field">
+      <span class="label" id="l-kind">What to make</span>
+      <div class="seg" role="radiogroup" aria-labelledby="l-kind">
+        <input type="radio" name="kind" id="k-lesson" value="lesson" checked><label for="k-lesson">Lesson</label>
+        <input type="radio" name="kind" id="k-picture" value="picture"><label for="k-picture">Picture book</label>
+        <input type="radio" name="kind" id="k-documentary" value="documentary"><label for="k-documentary">Documentary</label>
+        <input type="radio" name="kind" id="k-shorts" value="shorts"><label for="k-shorts">Shorts</label>
+      </div>
+      <p class="hint" id="kind-desc"></p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="pdf">Source PDF<span class="req" id="pdf-req">required for lessons</span></label>
+      <div class="drop" id="pdf-drop">
+        <input type="file" id="pdf" accept=".pdf,application/pdf">
+        <div class="drop-text" id="pdf-text">Choose a PDF or drop it here</div>
+        <button type="button" class="link" id="pdf-clear" hidden>Remove</button>
+      </div>
+      <p class="hint" id="pdf-hint">Copied to books/&lt;name&gt;/book.pdf, a private folder that git ignores.</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="slug">Book name</label>
+      <input type="text" id="slug" spellcheck="false" maxlength="40" placeholder="algebra-1">
+      <p class="hint" id="slug-hint"></p>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label class="label" for="chapter">First chapter<span class="req">optional</span></label>
+        <input type="number" id="chapter" min="1" max="999" placeholder="agent suggests">
+      </div>
+      <div class="field">
+        <label class="label" for="lang">Language</label>
+        <input type="text" id="lang" list="langs" value="en" spellcheck="false" maxlength="12">
+        <datalist id="langs"><option value="en"><option value="ru"><option value="zh"><option value="ja"><option value="ar"><option value="fa"><option value="de"><option value="fr"><option value="es"></datalist>
+      </div>
+    </div>
+
+    <div class="field" id="f-tier">
+      <label class="label" for="tier">Animation level</label>
+      <select id="tier">
+        <option value="auto">Let the agent suggest one</option>
+        <option value="1">Tier 1: diagrams that change</option>
+        <option value="2">Tier 2: illustrated scenes</option>
+      </select>
+      <p class="hint">Tier 1 is the lightest: a smaller model can do most steps. Tier 2 needs a strong model for the pictures.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-agent">
+    <h2 id="h-agent">Model and agent</h2>
+
+    <div class="field">
+      <label class="label" for="agent">Agent</label>
+      <select id="agent"></select>
+      <p class="hint" id="agent-note"></p>
+    </div>
+
+    <div class="field" id="f-command" hidden>
+      <label class="label" for="command">Command</label>
+      <textarea id="command" rows="2" spellcheck="false" placeholder="my-agent --prompt {message}"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="label" for="model">Model<span class="req">optional</span></label>
+      <input type="text" id="model" list="models" spellcheck="false" placeholder="gemma4:26b">
+      <datalist id="models"></datalist>
+      <p class="hint" id="models-status" aria-live="polite"></p>
+      <p class="hint" id="ctx-note" hidden>Ollama's default context is 4,000 tokens on graphics cards under 24 GB. Start it with OLLAMA_CONTEXT_LENGTH=64000, or the agent loses most of the skill's instructions.</p>
+      <p class="hint"><button type="button" class="link" id="models-refresh">Check again</button></p>
+    </div>
+
+    <div class="field" id="f-opencode" hidden>
+      <p class="hint" style="margin-top:0">OpenCode only knows the models an opencode.json lists. This writes one from your Ollama models and never changes an existing file.</p>
+      <p style="margin:0.5rem 0 0"><button type="button" class="btn small" id="opencode-write">Create opencode.json</button></p>
+      <p class="hint" id="opencode-msg" aria-live="polite"></p>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" id="offline">
+      <span>This computer has no internet
+        <small>Adds the offline rules to the brief: Kokoro voice (English only), no web tools, uv in offline mode.</small></span>
+    </label>
+  </section>
+
+  <section aria-labelledby="h-pics">
+    <h2 id="h-pics">Pictures</h2>
+    <div class="field">
+      <span class="label">Pictures to use</span>
+      <div class="drop" id="pics-drop">
+        <input type="file" id="pics-input" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,.png,.jpg,.jpeg,.gif,.webp,.svg" multiple aria-label="Choose pictures">
+        <div class="drop-text" id="pics-text">Choose pictures or drop them here<small id="pics-count">No pictures added</small></div>
+      </div>
+      <ul class="pics" id="pics"></ul>
+    </div>
+    <div class="field">
+      <label class="label" for="credits">Where they come from<span class="req">for the credits</span></label>
+      <textarea id="credits" rows="2" style="font-family:var(--sans);font-size:1rem" placeholder="Public domain, from the Rijksmuseum; or: drawn by me"></textarea>
+      <p class="hint">Copied to books/&lt;name&gt;/pictures/. Without this, the agent asks before using them in a published book.</p>
+    </div>
+  </section>
+
+  <div class="start">
+    <button type="submit" class="btn" id="start">Start in a terminal</button>
+    <p class="hint" id="start-hint"></p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+    <ul class="problems" id="problems" hidden></ul>
+    <div class="result" id="result" hidden></div>
+  </div>
+</form>
+
+<aside class="sheet-col" aria-label="What the agent receives">
+  <div class="sheet-shadow">
+    <article class="sheet">
+      <h2>Brief for the agent</h2>
+      <p class="sub" id="sheet-sub">Saved as START_PROMPT.md when you start.</p>
+      <pre class="brief" id="brief"></pre>
+    </article>
+  </div>
+  <div class="cmdbox">
+    <span class="label">Lines the terminal will run</span>
+    <pre class="cmd" id="cmd"></pre>
+    <button type="button" class="btn small" id="copy-cmd">Copy lines</button>
+  </div>
+</aside>
+</main>
+
+<script>
+(() => {
+'use strict';
+const TOKEN = '__TOKEN__';
+const $ = (s) => document.querySelector(s);
+const state = { agents: [], books: [], kinds: {}, limits: {}, models: {}, pdf: null, pics: [], slugEdited: false, touched: false, busy: false, problems: [], terminal: null, root: '' };
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { ...options, headers: { 'X-Token': TOKEN, ...(options.headers || {}) } });
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* not JSON */ }
+  if (!res.ok) { const err = new Error(data.error || res.statusText || 'The request failed.'); err.field = data.field; throw err; }
+  return data;
+}
+const post = (path, obj) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const currentAgent = () => state.agents.find((a) => a.id === $('#agent').value);
+const currentKind = () => document.querySelector('input[name=kind]:checked').value;
+
+function formData() {
+  return {
+    kind: currentKind(), slug: $('#slug').value.trim(), chapter: $('#chapter').value, lang: $('#lang').value.trim(),
+    tier: $('#tier').value, agent: $('#agent').value, command: $('#command').value, model: $('#model').value.trim(),
+    offline: $('#offline').checked, credits: $('#credits').value,
+    pdf_name: state.pdf ? state.pdf.name : '', pictures: state.pics.map((p) => p.file.name),
+  };
+}
+
+/* ---- live brief ---- */
+let seq = 0, timer = 0;
+const schedule = () => { clearTimeout(timer); timer = setTimeout(refresh, 150); };
+async function refresh() {
+  const n = ++seq;
+  try {
+    const r = await post('/api/preview', formData());
+    if (n !== seq) return;
+    $('#brief').textContent = r.brief;
+    $('#cmd').textContent = r.manual;
+    state.problems = r.problems;
+    showProblems();
+  } catch (e) { banner(e.message); }
+}
+const FIELD_EL = { slug: '#slug', chapter: '#chapter', lang: '#lang', model: '#model', command: '#command', pdf: '#pdf-drop', pictures: '#pics-drop', agent: '#agent' };
+function showProblems() {
+  document.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+  const ul = $('#problems'); ul.textContent = '';
+  if (!state.touched || !state.problems.length) { ul.hidden = true; return; }
+  for (const p of state.problems) {
+    const li = document.createElement('li'); li.textContent = p.message; ul.append(li);
+    const el = $(FIELD_EL[p.field] || '#none'); if (el) el.setAttribute('aria-invalid', 'true');
+  }
+  ul.hidden = false;
+}
+function banner(text) { const b = $('#banner'); b.textContent = text || ''; b.hidden = !text; }
+function status(text, kind) { const s = $('#status'); s.textContent = text || ''; s.className = 'status' + (kind ? ' ' + kind : ''); }
+
+/* ---- book fields ---- */
+function slugify(name) {
+  return name.replace(/\.[^.]+$/, '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '');
+}
+function syncBook() {
+  const kind = currentKind(), slug = $('#slug').value.trim();
+  const info = state.kinds[kind];
+  $('#kind-desc').textContent = info ? info.what.charAt(0).toUpperCase() + info.what.slice(1) + '.' : '';
+  $('#pdf-req').textContent = kind === 'lesson' ? 'required for lessons' : 'optional';
+  $('#f-tier').hidden = kind !== 'lesson';
+  const hint = $('#slug-hint');
+  if (slug && state.books.includes(slug)) hint.textContent = 'site/' + slug + '/ already exists, so the agent resumes that book.';
+  else hint.textContent = 'The folder name, site/' + (slug || 'algebra-1') + '/. Lowercase letters, digits and hyphens.';
+}
+function setPdf(file) {
+  if (file && file.size > state.limits.pdf) { status(file.name + ' is larger than ' + (state.limits.pdf >> 20) + ' MB.', 'error'); return; }
+  status('');
+  state.pdf = file || null;
+  $('#pdf-drop').classList.toggle('has', !!file);
+  $('#pdf-clear').hidden = !file;
+  const t = $('#pdf-text'); t.textContent = file ? file.name : 'Choose a PDF or drop it here';
+  if (file) { const s = document.createElement('small'); s.textContent = fmtSize(file.size); t.append(s); }
+  if (file && !state.slugEdited) $('#slug').value = slugify(file.name);
+  syncBook(); schedule();
+}
+$('#pdf').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) setPdf(f); e.target.value = ''; });
+$('#pdf-clear').addEventListener('click', () => setPdf(null));
+$('#slug').addEventListener('input', () => { state.slugEdited = $('#slug').value !== ''; syncBook(); schedule(); });
+document.querySelectorAll('input[name=kind]').forEach((r) => r.addEventListener('change', () => { syncBook(); schedule(); }));
+for (const id of ['#chapter', '#lang', '#tier', '#model', '#command', '#offline', '#credits']) {
+  $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
+}
+for (const id of ['#pdf-drop', '#pics-drop']) {
+  const z = $(id);
+  z.addEventListener('dragenter', () => z.classList.add('over'));
+  for (const ev of ['dragleave', 'drop']) z.addEventListener(ev, () => z.classList.remove('over'));
+}
+
+/* ---- pictures ---- */
+function addPictures(list) {
+  const skipped = [];
+  for (const file of list) {
+    if (!/\.(png|jpe?g|gif|webp|svg)$/i.test(file.name)) { skipped.push(file.name + ' (not a picture type)'); continue; }
+    if (file.size > state.limits.picture) { skipped.push(file.name + ' (over ' + (state.limits.picture >> 20) + ' MB)'); continue; }
+    if (state.pics.length >= state.limits.pictures) { skipped.push(file.name + ' (too many pictures)'); continue; }
+    if (state.pics.some((p) => p.file.name === file.name && p.file.size === file.size)) continue;
+    state.pics.push({ file, url: URL.createObjectURL(file) });
+  }
+  status(skipped.length ? 'Not added: ' + skipped.join(', ') : '', skipped.length ? 'error' : '');
+  renderPics(); schedule();
+}
+function renderPics() {
+  const ul = $('#pics'); ul.textContent = '';
+  state.pics.forEach((p, i) => {
+    const li = document.createElement('li');
+    const img = document.createElement('img'); img.src = p.url; img.alt = '';
+    const cap = document.createElement('span'); cap.className = 'cap'; cap.textContent = p.file.name + ' · ' + fmtSize(p.file.size);
+    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×';
+    rm.setAttribute('aria-label', 'Remove ' + p.file.name);
+    rm.addEventListener('click', () => { URL.revokeObjectURL(p.url); state.pics.splice(i, 1); renderPics(); schedule(); });
+    li.append(img, cap, rm); ul.append(li);
+  });
+  const n = state.pics.length;
+  $('#pics-count').textContent = n ? n + (n === 1 ? ' picture added' : ' pictures added') + '; choose more to add to them' : 'No pictures added';
+  $('#pics-drop').classList.toggle('has', n > 0);
+}
+$('#pics-input').addEventListener('change', (e) => { addPictures([...e.target.files]); e.target.value = ''; });
+
+/* ---- agent and model ---- */
+function syncAgent() {
+  const a = currentAgent(); if (!a) return;
+  $('#agent-note').textContent = a.note || '';
+  $('#f-command').hidden = a.id !== 'custom';
+  fillModels();
+}
+function fillModels() {
+  const a = currentAgent(), prefix = a ? a.model_prefix : '';
+  const dl = $('#models'); dl.textContent = '';
+  const found = [];
+  for (const [key, src] of Object.entries(state.models)) {
+    for (const m of src.models) { const o = document.createElement('option'); o.value = (key === 'ollama' ? prefix : '') + m; dl.append(o); }
+    if (src.models.length) found.push(src.label + ' (' + src.models.length + ')');
+  }
+  $('#models-status').textContent = found.length
+    ? 'Found ' + found.join(' and ') + ' on this computer. Pick a model from the list or type a name.'
+    : 'No local model server found (looked for Ollama and LM Studio). Type a model name, or start one and check again.';
+  const ollama = state.models.ollama && state.models.ollama.models.length > 0;
+  $('#ctx-note').hidden = !ollama;
+  $('#f-opencode').hidden = !(a && a.id === 'opencode');
+  $('#opencode-write').disabled = !ollama;
+  if (a && a.id === 'opencode' && !ollama) $('#opencode-msg').textContent = 'Start Ollama and pull a model first; then check again.';
+}
+async function loadModels() {
+  $('#models-status').textContent = 'Looking for local models...';
+  try { state.models = await api('/api/models'); } catch (e) { state.models = {}; }
+  fillModels();
+}
+$('#agent').addEventListener('change', () => { syncAgent(); schedule(); });
+$('#models-refresh').addEventListener('click', loadModels);
+$('#opencode-write').addEventListener('click', async () => {
+  const msg = $('#opencode-msg');
+  try { msg.textContent = (await post('/api/opencode-config', {})).message; } catch (e) { msg.textContent = e.message; }
+});
+
+/* ---- copy ---- */
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand('copy'); } catch (e2) { /* ignore */ } ta.remove(); }
+  const old = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = old; }, 1500);
+}
+$('#copy-cmd').addEventListener('click', (e) => copyText($('#cmd').textContent, e.currentTarget));
+
+/* ---- start ---- */
+const upload = (kind, slug, file) => api('/api/upload?kind=' + kind + '&slug=' + encodeURIComponent(slug) + '&name=' + encodeURIComponent(file.name),
+  { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+
+function setBusy(on) { state.busy = on; $('#start').disabled = on; }
+function showResult(r) {
+  const box = $('#result'); box.textContent = ''; box.hidden = false;
+  box.className = 'result' + (r.opened ? '' : ' warn');
+  const p = document.createElement('p');
+  if (r.opened) p.textContent = r.agent + ' is starting in a new terminal window. It reads the brief and asks you the first question there.';
+  else p.textContent = 'No terminal window could be opened here (' + r.why + '). Open a terminal, paste these lines, and the agent starts:';
+  box.append(p);
+  if (!r.opened) {
+    const pre = document.createElement('pre'); pre.className = 'cmd'; pre.textContent = r.manual; box.append(pre);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = 'Copy lines';
+    b.addEventListener('click', () => copyText(r.manual, b)); box.append(b);
+  }
+  const f = document.createElement('p'); f.className = 'hint';
+  f.textContent = 'Saved: ' + r.prompt_file + ' and ' + r.launcher; box.append(f);
+  box.scrollIntoView({ block: 'nearest' });
+}
+$('#form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (state.busy) return;
+  state.touched = true; $('#result').hidden = true; status('');
+  try {
+    const pre = await post('/api/preview', formData());
+    state.problems = pre.problems; showProblems();
+    if (pre.problems.length) { const el = $(FIELD_EL[pre.problems[0].field] || '#none'); if (el) el.scrollIntoView({ block: 'center' }); return; }
+    setBusy(true);
+    const slug = $('#slug').value.trim();
+    if (state.pdf) { status('Saving ' + state.pdf.name + ' (' + fmtSize(state.pdf.size) + ')...'); await upload('pdf', slug, state.pdf); }
+    const saved = [];
+    for (let i = 0; i < state.pics.length; i++) {
+      status('Saving picture ' + (i + 1) + ' of ' + state.pics.length + '...');
+      saved.push((await upload('picture', slug, state.pics[i].file)).name);
+    }
+    status('Opening the agent...');
+    const f = formData(); f.pictures = saved;
+    showResult(await post('/api/start', f));
+    status('');
+  } catch (e) {
+    status(e.message, 'error');
+  } finally { setBusy(false); }
+});
+
+/* ---- start up ---- */
+(async () => {
+  try {
+    const s = await api('/api/state');
+    Object.assign(state, { agents: s.agents, books: s.books, kinds: s.kinds, limits: s.limits, terminal: s.terminal, root: s.root });
+    const sel = $('#agent');
+    for (const a of s.agents) { const o = document.createElement('option'); o.value = a.id; o.textContent = a.name; sel.append(o); }
+    if (!s.skill) banner('This folder has no .claude/skills/papermorph/SKILL.md, so the agent would have nothing to follow. Start the GUI with --root pointing at the Papermorph folder.');
+    $('#start-hint').textContent = 'The agent opens in ' + (s.terminal ? s.terminal : 'a terminal window, if one can be found') + ', working in ' + s.root + '.';
+    syncBook(); syncAgent(); renderPics();
+    loadModels(); refresh();
+  } catch (e) { banner(e.message); }
+})();
+})();
+</script>
+</body>
+</html>
